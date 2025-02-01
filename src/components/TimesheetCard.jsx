@@ -29,16 +29,18 @@ import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import * as XLSX from 'xlsx';
+import axios from 'axios';
 
 const TimesheetCard = ({ timesheet, onDelete }) => {
-  // State management
+ 
   const [tasks, setTasks] = useState(timesheet.tasks || []);
-  const [newTask, setNewTask] = useState({ 
-    taskid: '', 
-    name: '', 
-    startdatetime: '', 
-    enddatetime: '', 
-    duration: '' 
+  const [newTask, setNewTask] = useState({  
+    taskName: '',
+    taskDescription: '', 
+    startTime: '', 
+    endTime: '', 
+    duration: '',
+    timesheetId: timesheet.timesheetId 
   });
   const [isOpen, setIsOpen] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -51,14 +53,14 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
     severity: 'success'
   });
 
-  // Utility functions
+
   const getTotalDuration = () => {
     return tasks.reduce((acc, task) => acc + parseFloat(task.duration), 0).toFixed(2);
   };
 
-  const calculateDuration = (startdatetime, enddatetime) => {
-    const start = new Date(startdatetime);
-    const end = new Date(enddatetime);
+  const calculateDuration = (startTime, endTime) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
     const duration = (end - start) / 1000 / 60 / 60;
     return duration.toFixed(2);
   };
@@ -75,56 +77,73 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
     );
   };
 
-  // Task management functions
-  const addTask = () => {
-    if (newTask.startdatetime && newTask.enddatetime) {
-      const duration = calculateDuration(newTask.startdatetime, newTask.enddatetime);
+  
+  const addTask = async () => {
+    if (newTask.startTime && newTask.endTime) {
+      const duration = calculateDuration(newTask.startTime, newTask.endTime);
       const taskWithId = {
         ...newTask,
         duration,
-        taskid: editingTaskId || (tasks.length + 1).toString(),
+        timesheetId: timesheet.timesheetId
       };
 
-      if (editingTaskId) {
-        setTasks(tasks.map((task) => (task.taskid === editingTaskId ? taskWithId : task)));
-      } else {
-        setTasks([...tasks, taskWithId]);
+      try {
+        if (editingTaskId) {
+          
+          const updatedTask = await axios.put(`http://localhost:8282/tasks/${editingTaskId}`, taskWithId);
+          setTasks(tasks.map((task) => (task.taskId === editingTaskId ? updatedTask.data : task)));
+        } else {
+          
+          const response = await axios.post('http://localhost:8282/tasks/create', taskWithId);
+          
+          setTasks([...tasks, response.data]);
+        }
+  
+        
+        setNewTask({ taskName: '',taskDescription: '', startTime: '', endTime: '', duration: '', timesheetId: timesheet.timesheetId });
+        setOpenDialog(false);
+        setEditingTaskId(null);
+        setIsOpen(true);
+      } catch (error) {
+        console.error('Error adding task:', error);
       }
-
-      setNewTask({ taskid: '', name: '', startdatetime: '', enddatetime: '', duration: '' });
-      setOpenDialog(false);
-      setEditingTaskId(null);
-      setIsOpen(true);
     }
   };
 
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter((task) => task.taskid !== taskId));
+  const handleDeleteTask = async (taskId) => {
+    try{
+      const response = await axios.delete(`http://localhost:8282/tasks/${taskId}`);
+      if (response.status === 204) {
+        setTasks(tasks.filter((task) => task.taskId !== taskId));
+      }
+    }catch(error){
+      console.error('Error deleting task:', error);
+    }
   };
 
   const handleDeleteTimesheet = () => {
     onDelete(timesheet.timesheetId);
   };
 
-  // Dialog management functions
+ 
   const handleDialogClose = () => {
     setOpenDialog(false);
-    setNewTask({ taskid: '', name: '', startdatetime: '', enddatetime: '', duration: '' });
+    setNewTask({ taskName: '',taskDescription: '', startTime: '', endTime: '', duration: '' , timesheetId: timesheet.timesheetId });
     setEditingTaskId(null);
   };
 
   const handleDialogOpen = (task = null) => {
     if (task) {
       setNewTask(task);
-      setEditingTaskId(task.taskid);
+      setEditingTaskId(task.taskId);
     } else {
-      setNewTask({ taskid: '', name: '', startdatetime: '', enddatetime: '', duration: '' });
+      setNewTask({ taskName: '',taskDescription: '', startTime: '', endTime: '', duration: '', timesheetId: timesheet.timesheetId });
       setEditingTaskId(null);
     }
     setOpenDialog(true);
   };
 
-  // Approvers management functions
+  
   const addApproverField = () => {
     setApprovers([...approvers, { email: '' }]);
   };
@@ -320,7 +339,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
                         </Button>
                         <Button 
                           size="small" 
-                          onClick={() => handleDeleteTask(task.taskid)} 
+                          onClick={() => handleDeleteTask(task.taskId)} 
                           color="error"
                         >
                           <DeleteIcon />
@@ -342,16 +361,16 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
           <DialogContent>
             <TextField
               label="Task Name"
-              value={newTask.name}
-              onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+              value={newTask.taskName}
+              onChange={(e) => setNewTask({ ...newTask, taskName: e.target.value })}
               fullWidth
               sx={{ mb: 2, mt: 2 }}
               required
             />
             <TextField
               label="Task Description"
-              value={newTask.description}
-              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              value={newTask.taskDescription}
+              onChange={(e) => setNewTask({ ...newTask, taskDescription: e.target.value })}
               fullWidth
               sx={{ mb: 2, mt: 2 }}
               required
@@ -359,12 +378,12 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
             <TextField
               label="Start Date/Time"
               type="time"
-              value={newTask.startdatetime ? newTask.startdatetime.split('T')[1] : ''}
+              value={newTask.startTime ? newTask.startTime.split('T')[1] : ''}
               onChange={(e) => {
                 const newStartTime = e.target.value;
                 setNewTask({
                   ...newTask,
-                  startdatetime: `${timesheet.date}T${newStartTime}`,
+                  startTime: `${timesheet.date}T${newStartTime}`,
                 });
               }}
               fullWidth
@@ -376,15 +395,15 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
             <TextField
               label="End Date/Time"
               type="time"
-              value={newTask.enddatetime ? newTask.enddatetime.split('T')[1] : ''}
+              value={newTask.endTime ? newTask.endTime.split('T')[1] : ''}
               onChange={(e) => {
                 const newEndTime = e.target.value;
                 const newEndDateTime = `${timesheet.date}T${newEndTime}`;
                 setNewTask({
                   ...newTask,
-                  enddatetime: newEndDateTime,
-                  duration: newTask.startdatetime ? 
-                    calculateDuration(newTask.startdatetime, newEndDateTime) : 
+                  endTime: newEndDateTime,
+                  duration: newTask.startTime ? 
+                    calculateDuration(newTask.startTime, newEndDateTime) : 
                     ''
                 });
               }}
@@ -408,7 +427,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
             <Button onClick={handleDialogClose}>Cancel</Button>
             <Button 
               onClick={addTask}
-              disabled={!newTask.name || !newTask.startdatetime || !newTask.enddatetime}
+              disabled={!newTask.taskName || !newTask.startTime || !newTask.endTime}
             >
               {editingTaskId ? 'Update' : 'Add'}
             </Button>
