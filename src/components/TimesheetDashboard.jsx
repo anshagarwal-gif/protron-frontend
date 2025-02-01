@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Container, Grid, Typography, Box, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import TimesheetCard from './TimesheetCard';
+import axios from 'axios';
 
 const TimesheetDashboard = () => {
   const [timesheets, setTimesheets] = useState([]);
@@ -15,6 +16,19 @@ const TimesheetDashboard = () => {
   const [newTimesheet, setNewTimesheet] = useState({ 
     selectedDate: dateRange.startDate 
   });
+
+  useEffect(()=>{
+    try {
+      const fetchTimesheets = async () => {
+        const response = await fetch('http://localhost:8282/timesheets/' + '1');  // Replace 1 with actual employee ID
+        const timesheets = await response.json();
+        setTimesheets(timesheets);
+      };
+      fetchTimesheets();
+    } catch (error) {
+      console.error('Error fetching timesheets:', error);
+    }
+  },[])
 
   const getCurrentMonthYear = () => {
     const date = new Date();
@@ -38,19 +52,32 @@ const TimesheetDashboard = () => {
     });
   };
 
-  const createTimesheet = () => {
+  const createTimesheet = async () => {
     const { selectedDate } = newTimesheet;
     const newTimesheetObject = {
-      uniqueid: (timesheets.length + 1).toString(),
-      selectedDate,
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate,
-      tasksarray: [],
-      status: 'Not sent'
+      employeeId: 1, 
+      date: selectedDate,
+      taskDuration: 0, 
+      status: 'Not sent',
+      tasks: [] 
     };
-    const updatedTimesheets = [...timesheets, newTimesheetObject];
-    setTimesheets(updatedTimesheets);
-    setFilteredTimesheets(updatedTimesheets);
+    
+    try {
+      const response = await axios.post('http://localhost:8282/insert', newTimesheetObject, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Timesheet created:', response.data);
+      const updatedTimesheets = [...timesheets, {...response.data, tasks: response.data.tasks == null ? [] : response.data.tasks}];
+      setTimesheets(updatedTimesheets);
+      setFilteredTimesheets(updatedTimesheets);
+    } catch (error) {
+      console.error('Error creating timesheet:', error);
+    }
+
+    
     setOpenDialog(false);
     setNewTimesheet({ selectedDate: dateRange.startDate });
   };
@@ -72,10 +99,16 @@ const TimesheetDashboard = () => {
     setSearchQuery(query);
   };
 
-  const handleDeleteTimesheet = (uniqueid) => {
-    const updatedTimesheets = timesheets.filter((timesheet) => timesheet.uniqueid !== uniqueid);
-    setTimesheets(updatedTimesheets);
-    setFilteredTimesheets(updatedTimesheets);
+  const handleDeleteTimesheet = async (uniqueid) => {
+    try {
+      const response = await axios.delete('http://localhost:8282/delete/' + uniqueid);
+      console.log('Timesheet deleted:', response.data);
+      const updatedTimesheets = timesheets.filter((timesheet) => timesheet.timesheetId !== uniqueid);
+      setTimesheets(updatedTimesheets);
+      setFilteredTimesheets(updatedTimesheets);
+    } catch (error) {
+      console.error('Error deleting timesheet:', error);
+    }
   };
 
   useEffect(() => {
@@ -85,24 +118,32 @@ const TimesheetDashboard = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  
   useEffect(() => {
     const filtered = timesheets.filter((timesheet) => {
-      const tasksMatch = timesheet.tasksarray.some((task) =>
-        task.name.toLowerCase().includes(debouncedSearchQuery) ||
-        task.startdatetime.toLowerCase().includes(debouncedSearchQuery) ||
-        task.enddatetime.toLowerCase().includes(debouncedSearchQuery)
+      // Check if the timesheet date is within the selected date range
+      const isWithinDateRange = timesheet.date >= dateRange.startDate && timesheet.date <= dateRange.endDate;
+      
+      // If timesheet date is within the range, proceed with other filters (search query and task match)
+      const tasksMatch = timesheet.tasks.some((task) =>
+        task.taskName.toLowerCase().includes(debouncedSearchQuery) ||
+        task.startTime.toLowerCase().includes(debouncedSearchQuery) ||
+        task.endTime.toLowerCase().includes(debouncedSearchQuery)
       );
-
+  
       return (
-        timesheet.uniqueid.toLowerCase().includes(debouncedSearchQuery) ||
-        timesheet.month.toLowerCase().includes(debouncedSearchQuery) ||
-        tasksMatch
+        isWithinDateRange && 
+        (
+          timesheet.timesheetId.toString().includes(debouncedSearchQuery) ||
+          timesheet.date.toLowerCase().includes(debouncedSearchQuery) ||
+          tasksMatch
+        )
       );
     });
-
+  
     setFilteredTimesheets(filtered);
-  }, [debouncedSearchQuery, timesheets]);
-
+  }, [debouncedSearchQuery, timesheets, dateRange]);
+  
   return (
     <Container>
 
@@ -151,7 +192,7 @@ const TimesheetDashboard = () => {
       {/* Timesheet List */}
       <Grid container spacing={2}>
         {filteredTimesheets.map((timesheet) => (
-          <Grid item xs={12} key={timesheet.uniqueid}>
+          <Grid item xs={12} key={timesheet.timesheetId}>
             <TimesheetCard timesheet={timesheet} onDelete={handleDeleteTimesheet} />
           </Grid>
         ))}

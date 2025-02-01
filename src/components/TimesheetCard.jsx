@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -32,7 +32,7 @@ import * as XLSX from 'xlsx';
 
 const TimesheetCard = ({ timesheet, onDelete }) => {
   // State management
-  const [tasks, setTasks] = useState(timesheet.tasksarray);
+  const [tasks, setTasks] = useState(timesheet.tasks || []);
   const [newTask, setNewTask] = useState({ 
     taskid: '', 
     name: '', 
@@ -103,7 +103,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
   };
 
   const handleDeleteTimesheet = () => {
-    onDelete(timesheet.uniqueid);
+    onDelete(timesheet.timesheetId);
   };
 
   // Dialog management functions
@@ -148,20 +148,22 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         message: 'No tasks to export',
         severity: 'warning'
       });
+      alert('No tasks to export');
       return;
     }
     const exportData = tasks.map(task => ({
-      "Task ID": task.taskid,
-      "Name": task.name,
-      "Start Date/Time": task.startdatetime,
-      "End Date/Time": task.enddatetime,
+      "Task ID": task.taskId,
+      "Name": task.taskName,
+      "Task Description": task.taskDescription,
+      "Start Date/Time": task.startTime,
+      "End Date/Time": task.endTime,
       "Duration (hours)": task.duration
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-    XLSX.writeFile(wb, `${timesheet.month}_${timesheet.year}_tasks.xlsx`);
+    XLSX.writeFile(wb, `${timesheet.date}_tasks.xlsx`);
   };
 
   // Submit timesheet function
@@ -179,7 +181,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         },
         body: new URLSearchParams({
           employeeId: employeeId,
-          timesheetId: timesheet.uniqueid
+          timesheetId: timesheet.timesheetId
         })
       });
 
@@ -226,7 +228,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         {/* Header Section */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{mr: 3}}>{timesheet.selectedDate}</Typography>
+            <Typography variant="h6" sx={{mr: 3}}>{timesheet.date}</Typography>
             <Chip 
               label={timesheet.status} 
               color={getStatusColor(timesheet.status)} 
@@ -292,6 +294,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
                   <TableRow>
                     <TableCell>Task ID</TableCell>
                     <TableCell>Name</TableCell>
+                    <TableCell>Task Description</TableCell>
                     <TableCell>Start Date/Time</TableCell>
                     <TableCell>End Date/Time</TableCell>
                     <TableCell>Duration (hours)</TableCell>
@@ -300,11 +303,12 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
                 </TableHead>
                 <TableBody>
                   {tasks.map((task) => (
-                    <TableRow key={task.taskid}>
-                      <TableCell>{task.taskid}</TableCell>
-                      <TableCell>{task.name}</TableCell>
-                      <TableCell>{task.startdatetime}</TableCell>
-                      <TableCell>{task.enddatetime}</TableCell>
+                    <TableRow key={task.taskId}>
+                      <TableCell>{task.taskId}</TableCell>
+                      <TableCell>{task.taskName}</TableCell>
+                      <TableCell>{task.taskDescription}</TableCell>
+                      <TableCell>{task.startTime}</TableCell>
+                      <TableCell>{task.endTime}</TableCell>
                       <TableCell>{task.duration}</TableCell>
                       <TableCell>
                         <Button 
@@ -345,6 +349,14 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
               required
             />
             <TextField
+              label="Task Description"
+              value={newTask.description}
+              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              fullWidth
+              sx={{ mb: 2, mt: 2 }}
+              required
+            />
+            <TextField
               label="Start Date/Time"
               type="time"
               value={newTask.startdatetime ? newTask.startdatetime.split('T')[1] : ''}
@@ -352,7 +364,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
                 const newStartTime = e.target.value;
                 setNewTask({
                   ...newTask,
-                  startdatetime: `${timesheet.selectedDate}T${newStartTime}`,
+                  startdatetime: `${timesheet.date}T${newStartTime}`,
                 });
               }}
               fullWidth
@@ -367,7 +379,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
               value={newTask.enddatetime ? newTask.enddatetime.split('T')[1] : ''}
               onChange={(e) => {
                 const newEndTime = e.target.value;
-                const newEndDateTime = `${timesheet.selectedDate}T${newEndTime}`;
+                const newEndDateTime = `${timesheet.date}T${newEndTime}`;
                 setNewTask({
                   ...newTask,
                   enddatetime: newEndDateTime,
