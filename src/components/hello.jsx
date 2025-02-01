@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
-import { Card, CardContent, Button, Typography, Box, TextField, Table, TableHead, TableRow, TableCell, TableBody, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Chip} from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
+import { Card, CardContent, Button, Typography, Box, TextField, Table, TableHead, TableRow, TableCell, TableBody, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Snackbar, Alert } from '@mui/material';  
 import * as XLSX from 'xlsx';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import EditIcon from '@mui/icons-material/Edit';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-
+import SendIcon from '@mui/icons-material/Send';
 const TimesheetCard = ({ timesheet, onDelete }) => {
   const [tasks, setTasks] = useState(timesheet.tasksarray);
   const [newTask, setNewTask] = useState({ taskid: '', name: '', startdatetime: '', enddatetime: '', duration: '' });
   const [isOpen, setIsOpen] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+  
 
-  const getTotalDuration = () => {
-    return tasks.reduce((acc, task) => acc + parseFloat(task.duration), 0).toFixed(2);
-  };
 
   const submitTimesheet = async () => {
     try {
@@ -56,7 +56,6 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
       console.error('Error submitting timesheet:', error);
     }
   };
-
   const addTask = () => {
     if (newTask.startdatetime) {
       if (newTask.enddatetime) {
@@ -76,9 +75,8 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
       }
 
       setNewTask({ taskid: '', name: '', startdatetime: '', enddatetime: '', duration: '' });
-      setOpenDialog(false);
+      setOpenDialog(false); 
       setEditingTaskId(null);
-      setIsOpen(true);
     }
   };
 
@@ -115,10 +113,6 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
   };
 
   const exportToExcel = () => {
-    if (tasks.length === 0) {
-      alert('No tasks to export');
-      return;
-    }
     const exportData = tasks.map(task => ({
       "Task ID": task.taskid,
       "Name": task.name,
@@ -133,45 +127,30 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
     XLSX.writeFile(wb, `${timesheet.month}_${timesheet.year}_tasks.xlsx`);
   };
 
-  // Set colors for different statuses
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Approved':
-        return 'success';
-      case 'Pending':
-        return 'warning';
-      case 'Rejected':
-        return 'error';
-      default:
-        return 'primary';
-    }
-  };
-
   return (
     <Card>
       <CardContent>
-        <Box height='10px' sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{mr: 3}}>{timesheet.selectedDate}</Typography>
-            <Chip label={timesheet.status} color={getStatusColor(timesheet.status)} size="small" sx={{mr: 3}}/>
-            <Typography variant="h8" sx={{mr: 3}}>Total Tasks: {tasks.length}</Typography>
-            <Typography variant="h8" sx={{mr: 3}}>Total Duration: {getTotalDuration()} Hr </Typography>
-          </Box>
+        <Box height='10px' sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">{timesheet.month} {timesheet.year}</Typography>
 
           <Box>
           <Button 
                 size="small" 
                 color="primary" 
                 onClick={submitTimesheet} 
+                startIcon={<SendIcon />}
                 sx={{ mr: 2 }}
               >
-                <SendIcon />
+                Submit for Approval
               </Button>
-            <Button size="large" onClick={() => handleDialogOpen()} ><AddIcon /></Button>
-            <Button size="large" color="error" onClick={handleDeleteTimesheet} ><DeleteIcon /></Button>
-            <Button size="large" color="success" onClick={exportToExcel} ><FileDownloadIcon /></Button>
-            <Button size="large" onClick={() => setIsOpen(!isOpen)} color="primary">
-              {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            <Button size="small" color="error" onClick={handleDeleteTimesheet} startIcon={<DeleteIcon />}>
+              Delete
+            </Button>
+            <Button size="small" color="success" sx={{ ml: 2 }} onClick={exportToExcel} startIcon={<FileDownloadIcon />}>
+              Export
+            </Button>
+            <Button size="small" onClick={() => setIsOpen(!isOpen)} color="primary" sx={{ ml: 2 }} startIcon={isOpen ? <AddIcon /> : <AddIcon />}>
+              {isOpen ? 'Hide Tasks' : 'Show Tasks'}
             </Button>
           </Box>
         </Box>
@@ -179,6 +158,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         {/* Collapsible Section for Tasks */}
         <Collapse in={isOpen}>
           <Box sx={{ mt: 2 }}>
+            <Button size="small" onClick={() => handleDialogOpen()} startIcon={<AddIcon />}>Add Task</Button>
             {tasks.length > 0 && (
               <Table sx={{ mt: 2 }}>
                 <TableHead>
@@ -216,60 +196,45 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
       <Dialog open={openDialog} onClose={handleDialogClose}>
         <DialogTitle>{editingTaskId ? 'Edit Task' : 'Add New Task'}</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Task Name"
-            value={newTask.name}
-            onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+          <TextField 
+            label="Task Name" 
+            value={newTask.name} 
+            onChange={(e) => setNewTask({ ...newTask, name: e.target.value })} 
             fullWidth
             sx={{ mb: 2, mt: 2 }}
             required
           />
-          <TextField
-            label="Start Date/Time"
-            type="time"
-            value={newTask.startdatetime ? newTask.startdatetime.split('T')[1] : ''}
-            onChange={(e) => {
-              const newStartTime = e.target.value;
-              setNewTask({
-                ...newTask,
-                startdatetime: `${timesheet.selectedDate}T${newStartTime}`, 
-              });
-            }}
+          <TextField 
+            label="Start Date/Time" 
+            type="datetime-local" 
+            value={newTask.startdatetime} 
+            onChange={(e) => setNewTask({ ...newTask, startdatetime: e.target.value })}
             fullWidth
             sx={{ mb: 2 }}
             required
             InputLabelProps={{ shrink: true }}
-            inputProps={{
-              step: 300, 
-            }}
           />
-          <TextField
-            label="End Date/Time"
-            type="time"
-            value={newTask.enddatetime ? newTask.enddatetime.split('T')[1] : ''}
+          <TextField 
+            label="End Date/Time" 
+            type="datetime-local" 
+            value={newTask.enddatetime} 
             onChange={(e) => {
-              const newEndTime = e.target.value;
-              setNewTask({
-                ...newTask,
-                enddatetime: `${timesheet.selectedDate}T${newEndTime}`, 
-              });
+              const enddatetime = e.target.value;
+              setNewTask({ ...newTask, enddatetime });
 
-              if (newTask.startdatetime) {
-                const duration = calculateDuration(newTask.startdatetime, `${timesheet.selectedDate}T${newEndTime}`);
+              if (enddatetime && newTask.startdatetime) {
+                const duration = calculateDuration(newTask.startdatetime, enddatetime);
                 setNewTask((prevState) => ({ ...prevState, duration }));
               }
             }}
             fullWidth
             sx={{ mb: 2 }}
             InputLabelProps={{ shrink: true }}
-            inputProps={{
-              step: 300, 
-            }}
           />
-          <TextField
-            label="Duration (hours)"
-            type="number"
-            value={newTask.duration}
+          <TextField 
+            label="Duration (hours)" 
+            type="number" 
+            value={newTask.duration} 
             onChange={(e) => setNewTask({ ...newTask, duration: e.target.value })}
             fullWidth
             required
@@ -280,6 +245,19 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
           <Button size="small" onClick={addTask} color="primary">Submit</Button>
         </DialogActions>
       </Dialog>
+      <Snackbar 
+      open={snackbar.open} 
+      autoHideDuration={1000} 
+      onClose={() => setSnackbar({ ...snackbar, open: false })}
+    >
+      <Alert 
+        onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        severity={snackbar.severity} 
+        sx={{ width: '100%' }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
     </Card>
   );
 };

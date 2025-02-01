@@ -6,34 +6,55 @@ const TimesheetDashboard = () => {
   const [timesheets, setTimesheets] = useState([]);
   const [filteredTimesheets, setFilteredTimesheets] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
-  const [newTimesheet, setNewTimesheet] = useState({ month: '', year: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
+  const [newTimesheet, setNewTimesheet] = useState({ 
+    selectedDate: dateRange.startDate 
+  });
 
   const getCurrentMonthYear = () => {
     const date = new Date();
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    const currentMonth = months[date.getMonth()]; // Get current month name
-    const currentYear = date.getFullYear(); // Get current year
+    const currentMonth = months[date.getMonth()];
+    const currentYear = date.getFullYear();
     return { month: currentMonth, year: currentYear.toString() };
   };
 
+  const handleStartDateChange = (e) => {
+    const newStartDate = e.target.value;
+    // Calculate end date (7 days after start date)
+    const endDate = new Date(new Date(newStartDate).getTime() + 6 * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0];
+
+    setDateRange({
+      startDate: newStartDate,
+      endDate: endDate
+    });
+  };
+
   const createTimesheet = () => {
-    const { month, year } = newTimesheet;
+    const { selectedDate } = newTimesheet;
     const newTimesheetObject = {
       uniqueid: (timesheets.length + 1).toString(),
-      month,
-      year,
-      tasksarray: []
+      selectedDate,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+      tasksarray: [],
+      status: 'Not sent'
     };
     const updatedTimesheets = [...timesheets, newTimesheetObject];
     setTimesheets(updatedTimesheets);
-    setFilteredTimesheets(updatedTimesheets); // Update filtered list as well
+    setFilteredTimesheets(updatedTimesheets);
     setOpenDialog(false);
-    setNewTimesheet({ month: '', year: '' });
+    setNewTimesheet({ selectedDate: dateRange.startDate });
   };
+  
 
   const handleDialogClose = () => {
     setOpenDialog(false);
@@ -41,7 +62,6 @@ const TimesheetDashboard = () => {
   };
 
   const handleDialogOpen = () => {
-    // Set the month and year to the current values when the dialog opens
     const { month, year } = getCurrentMonthYear();
     setNewTimesheet({ month, year });
     setOpenDialog(true);
@@ -51,18 +71,20 @@ const TimesheetDashboard = () => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
   };
+
   const handleDeleteTimesheet = (uniqueid) => {
     const updatedTimesheets = timesheets.filter((timesheet) => timesheet.uniqueid !== uniqueid);
     setTimesheets(updatedTimesheets);
-    setFilteredTimesheets(updatedTimesheets); 
+    setFilteredTimesheets(updatedTimesheets);
   };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 300); 
-
-    return () => clearTimeout(timer); 
+    }, 300);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
+
   useEffect(() => {
     const filtered = timesheets.filter((timesheet) => {
       const tasksMatch = timesheet.tasksarray.some((task) =>
@@ -83,9 +105,35 @@ const TimesheetDashboard = () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>Timesheet Dashboard</Typography>
-      
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ mb: 5 }}>Timesheet Dashboard</Typography>
+        {/* Date Range Picker */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            label="Start Date"
+            type="date"
+            value={dateRange.startDate}
+            onChange={handleStartDateChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ width: '200px' }}
+          />
+          <TextField
+            label="End Date"
+            type="date"
+            value={dateRange.endDate}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            disabled
+            sx={{ width: '200px' }}
+          />
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' , mb: 4 }}>
         {/* Search Bar */}
         <TextField
           label="Search Timesheets"
@@ -93,15 +141,15 @@ const TimesheetDashboard = () => {
           onChange={handleSearchChange}
           variant="outlined"
           size="small"
-          sx={{width:'600px'}}
+          sx={{ width: '600px' }}
         />
-        
+
         {/* Create Timesheet Button */}
         <Button variant="contained" size='small' onClick={handleDialogOpen}>Create Timesheet</Button>
       </Box>
 
       {/* Timesheet List */}
-      <Grid container spacing={2} sx={{ mt: 2 }}>
+      <Grid container spacing={2}>
         {filteredTimesheets.map((timesheet) => (
           <Grid item xs={12} key={timesheet.uniqueid}>
             <TimesheetCard timesheet={timesheet} onDelete={handleDeleteTimesheet} />
@@ -110,21 +158,30 @@ const TimesheetDashboard = () => {
       </Grid>
 
       {/* Dialog for Creating Timesheet */}
+      {/* Dialog for Creating Timesheet */}
       <Dialog open={openDialog} onClose={handleDialogClose}>
         <DialogTitle>Create New Timesheet</DialogTitle>
         <DialogContent>
-          <TextField 
-            label="Month" 
-            value={newTimesheet.month} 
-            onChange={(e) => setNewTimesheet({ ...newTimesheet, month: e.target.value })} 
+          <TextField
+            label="Select Date"
+            type="date"
+            InputLabelProps={{
+              shrink: true,
+            }}
+            inputProps={{
+              min: dateRange.startDate,
+              max: dateRange.endDate
+            }}
             fullWidth
-            sx={{ mb: 2,mt:2 }}
-          />
-          <TextField 
-            label="Year" 
-            value={newTimesheet.year} 
-            onChange={(e) => setNewTimesheet({ ...newTimesheet, year: e.target.value })}
-            fullWidth
+            onChange={(e) => {
+              const selectedDate = e.target.value;
+              if (selectedDate >= dateRange.startDate && selectedDate <= dateRange.endDate) {
+                setNewTimesheet({
+                  ...newTimesheet,
+                  selectedDate: selectedDate
+                });
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -132,7 +189,9 @@ const TimesheetDashboard = () => {
           <Button onClick={createTimesheet} color="primary">Create</Button>
         </DialogActions>
       </Dialog>
+
     </Container>
   );
 };
+
 export default TimesheetDashboard;
