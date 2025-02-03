@@ -193,15 +193,18 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         .map(approver => approver.email)
         .filter(email => email.trim() !== '' && isValidEmail(email));
       console.log('Approvers:', approverEmails, 'Tasks:', tasks);
+      const formData = new URLSearchParams();
+    formData.append("employeeId", employeeId);
+    formData.append("timesheetId", timesheet.timesheetId);
+    
+    // Append approver emails as separate fields
+    approverEmails.forEach(email => formData.append("approvers", email));
       const response = await fetch('http://localhost:8282/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          employeeId: employeeId,
-          timesheetId: timesheet.timesheetId
-        })
+        body: formData.toString(),
       });
 
       if (response.ok) {
