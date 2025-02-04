@@ -31,6 +31,7 @@ const Manager = () => {
     setTasks(sortedTasks);
     setSorted(!sorted);
   };
+  
 
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(tasks);
