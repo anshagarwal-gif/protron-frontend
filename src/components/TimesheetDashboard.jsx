@@ -57,7 +57,7 @@ const TimesheetDashboard = () => {
       employeeId: 1, 
       date: selectedDate,
       taskDuration: 0, 
-      status: 'Not sent',
+      status: 'Not Sent',
       tasks: [] 
     };
     
