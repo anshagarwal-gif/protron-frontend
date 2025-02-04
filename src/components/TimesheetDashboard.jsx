@@ -16,7 +16,6 @@ const TimesheetDashboard = () => {
   const [newTimesheet, setNewTimesheet] = useState({ 
     selectedDate: dateRange.startDate 
   });
-
   useEffect(()=>{
     try {
       const fetchTimesheets = async () => {
