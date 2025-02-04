@@ -193,7 +193,7 @@ const TimesheetDashboard = () => {
       <Grid container spacing={2}>
         {filteredTimesheets.map((timesheet) => (
           <Grid item xs={12} key={timesheet.timesheetId}>
-            <TimesheetCard timesheet={timesheet} onDelete={handleDeleteTimesheet} />
+            <TimesheetCard timesheet={timesheet} onDelete={handleDeleteTimesheet} setTimesheets={setTimesheets} />
           </Grid>
         ))}
       </Grid>

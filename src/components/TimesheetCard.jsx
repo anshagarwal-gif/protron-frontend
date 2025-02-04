@@ -31,7 +31,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 
-const TimesheetCard = ({ timesheet, onDelete }) => {
+const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
  
   const [tasks, setTasks] = useState(timesheet.tasks || []);
   const [newTask, setNewTask] = useState({  
@@ -217,6 +217,12 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
         });
         setApproversModalOpen(false);
         setApprovers([{ email: '' }]);
+        setTimesheets((timesheets) => timesheets.map((ts) => {
+          if (ts.timesheetId === timesheet.timesheetId) {
+            return { ...ts, status: 'Pending' };
+          }
+          return ts;
+        }));
       } else {
         throw new Error('Failed to submit timesheet');
       }
@@ -266,7 +272,8 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
           </Box>
 
           <Box>
-            <Button 
+            {timesheet.status === 'Not Sent' && (
+              <Button 
               size="small" 
               color="primary" 
               onClick={() => {setApproversModalOpen(true)}} 
@@ -274,14 +281,18 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
             >
               <SendIcon />
             </Button>
-            <Button 
+            )}
+            {timesheet.status === 'Not Sent' && (
+              <Button 
               size="small" 
               onClick={() => handleDialogOpen()}
               sx={{ mr: 2 }}
             >
               <AddIcon />
             </Button>
-            <Button 
+            )}
+            {timesheet.status === 'Not Sent' && (
+              <Button 
               size="small" 
               color="error" 
               onClick={handleDeleteTimesheet}
@@ -289,6 +300,7 @@ const TimesheetCard = ({ timesheet, onDelete }) => {
             >
               <DeleteIcon />
             </Button>
+            )}
             <Button 
               size="small" 
               color="success" 
