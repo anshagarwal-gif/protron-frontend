@@ -1,19 +1,7 @@
-import React, { useState } from 'react';
-import {
-    Drawer,
-    List,
-    ListItem,
-    ListItemIcon,
-    ListItemText,
-    Box,
-    Typography,
-    styled,
-} from '@mui/material';
-import {
-    Home as HomeIcon,
-    Timer as TimerIcon,
-} from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Drawer, List, ListItem, ListItemIcon, ListItemText, Box, Typography, styled } from '@mui/material';
+import { Home as HomeIcon, Timer as TimerIcon } from '@mui/icons-material';
+import { Link, useLocation } from 'react-router-dom';
 
 // Custom styled components
 const LogoContainer = styled(Box)(({ theme }) => ({
@@ -31,9 +19,7 @@ const StyledListItem = styled(ListItem)(({ theme, active }) => ({
     backgroundColor: active ? theme.palette.primary.main : 'transparent',
     color: active ? theme.palette.primary.contrastText : theme.palette.text.primary,
     '&:hover': {
-        backgroundColor: active
-            ? theme.palette.primary.dark
-            : theme.palette.action.hover,
+        backgroundColor: active ? theme.palette.primary.dark : theme.palette.action.hover,
     }
 }));
 
@@ -45,7 +31,7 @@ const StyledLink = styled(Link)({
 });
 
 const Sidebar = () => {
-    const [activeItem, setActiveItem] = useState('Home');
+    const location = useLocation(); // Get current route path
 
     const menuItems = [
         { name: 'Home', icon: <HomeIcon />, path: '/' },
@@ -76,11 +62,10 @@ const Sidebar = () => {
                     <StyledLink to={item.path} key={item.name}>
                         <StyledListItem
                             button
-                            active={activeItem === item.name ? 1 : 0}
-                            onClick={() => setActiveItem(item.name)}
+                            active={location.pathname === item.path ? 1 : 0}
                         >
                             <ListItemIcon sx={{
-                                color: activeItem === item.name ? 'inherit' : undefined,
+                                color: location.pathname === item.path ? 'inherit' : undefined,
                                 minWidth: '40px' // Reduce icon spacing
                             }}>
                                 {item.icon}
