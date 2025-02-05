@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { Box } from "@mui/material";
 import TimesheetDashboard from "./components/TimesheetDashboard.jsx";
 import Sidebar from "./components/Sidebar.jsx"
+import ManagerDashboard from "./components/ManagerDashboard.jsx";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<>Home</>} />
           <Route path="/timesheet" element={<TimesheetDashboard />} />
+          <Route path="/manager" element={<ManagerDashboard/>}/>
         </Routes>
       </Box>
     </Box>
