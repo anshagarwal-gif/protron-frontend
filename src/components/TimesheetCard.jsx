@@ -211,7 +211,9 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
       formData.append("timesheetId", timesheet.timesheetId);
   
       // Append selected approvers
-      selectedApprovers.forEach(email => formData.append("approvers", email));
+      selectedApprovers.forEach(email => formData.append("approverEmails", email));
+        // For debugging - log the form data
+        console.log('Submitting with params:', Object.fromEntries(formData));
   
       const response = await axios.post('http://localhost:8282/submit', formData, {
         headers: {

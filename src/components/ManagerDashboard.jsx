@@ -32,6 +32,8 @@ const ManagerDashboard = ({ managerId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [selectedApprovers, setSelectedApprovers] = useState([]); // Store selected approvers
+
 
   useEffect(() => {
     fetchPendingApprovals();
@@ -55,18 +57,33 @@ const ManagerDashboard = ({ managerId }) => {
       setLoading(false);
     }
   };
-
-  const handleApproval = async (approvalId, status) => {
+  const handleApproval = async (timesheetId, status, approverEmails) => {
     try {
-      await axios.post(`http://localhost:8282/approvals/updateStatus`, { approvalId, status });
-      setPendingApprovals(pendingApprovals.filter((approval) => approval.approvalId !== approvalId));
-      setFilteredApprovals(filteredApprovals.filter((approval) => approval.approvalId !== approvalId));
-      setSnackbar({ open: true, message: `Timesheet ${status}`, severity: 'success' });
+        const endpoint = `http://localhost:8282/${status === "Approved" ? "approve" : "reject"}/${timesheetId}`;
+
+        const payload = {
+            approverEmails: approverEmails,  // Make sure correct data is passed
+            ...(status === "Rejected" && { reason: "Not meeting expectations" })
+        };
+
+        const response = await axios.post(endpoint, null, { params: payload });
+
+        console.log(`${status} Success:`, response.data);
+
+        setPendingApprovals(pendingApprovals.filter((approval) => approval.timesheet.timesheetId !== timesheetId));
+        setFilteredApprovals(filteredApprovals.filter((approval) => approval.timesheet.timesheetId !== timesheetId));
+
+        setSnackbar({ open: true, message: `Timesheet ${status}`, severity: 'success' });
     } catch (error) {
-      console.error("Error updating approval status:", error);
-      setSnackbar({ open: true, message: 'Error updating approval status.', severity: 'error' });
+        console.error(`Error updating timesheet status to ${status}:`, error);
+        setSnackbar({ open: true, message: `Error updating timesheet status.`, severity: 'error' });
     }
-  };
+};
+
+
+  
+  
+  
 
   const handleExpandClick = (approvalId) => {
     setExpanded((prevState) => ({
@@ -209,14 +226,32 @@ const ManagerDashboard = ({ managerId }) => {
 
                     <Grid container spacing={2} sx={{ mt: 2 }}>
                       <Grid item>
-                        <Button variant="contained" color="success" onClick={() => handleApproval(approval.approvalId, "Approved")}>
-                          Approve
-                        </Button>
+                      <Button 
+  variant="contained" 
+  color="success" 
+  onClick={() => handleApproval(
+    approval.timesheet.timesheetId, 
+    "Approved", 
+    approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
+  )}
+>
+  Approve
+</Button>
+
                       </Grid>
                       <Grid item>
-                        <Button variant="contained" color="error" onClick={() => handleApproval(approval.approvalId, "Rejected")}>
-                          Reject
-                        </Button>
+                      <Button 
+  variant="contained" 
+  color="error" 
+  onClick={() => handleApproval(
+    approval.timesheet.timesheetId, 
+    "Rejected", 
+    approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
+  )}
+>
+  Reject
+</Button>
+
                       </Grid>
                     </Grid>
                   </Collapse>
