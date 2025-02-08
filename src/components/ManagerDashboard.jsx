@@ -79,12 +79,6 @@ const ManagerDashboard = ({ managerId }) => {
         setSnackbar({ open: true, message: `Error updating timesheet status.`, severity: 'error' });
     }
 };
-
-
-  
-  
-  
-
   const handleExpandClick = (approvalId) => {
     setExpanded((prevState) => ({
       ...prevState,

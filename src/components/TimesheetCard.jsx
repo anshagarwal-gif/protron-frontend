@@ -204,6 +204,16 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
     try {
       const employeeId = '1';
   
+      // Check if tasks array is empty
+      if (tasks.length === 0) {
+        setSnackbar({
+          open: true,
+          message: 'There are no tasks in the timesheet.',
+          severity: 'warning',
+        });
+        return;
+      }
+  
       console.log('Approvers:', selectedApprovers, 'Tasks:', tasks);
   
       const formData = new URLSearchParams();
@@ -212,8 +222,9 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   
       // Append selected approvers
       selectedApprovers.forEach(email => formData.append("approverEmails", email));
-        // For debugging - log the form data
-        console.log('Submitting with params:', Object.fromEntries(formData));
+  
+      // For debugging - log the form data
+      console.log('Submitting with params:', Object.fromEntries(formData));
   
       const response = await axios.post('http://localhost:8282/submit', formData, {
         headers: {
@@ -250,7 +261,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
       console.error('Error submitting timesheet:', error);
     }
   };
-
+  
   // Status color function
   const getStatusColor = (status) => {
     switch (status) {
@@ -266,6 +277,21 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   };
 
   return (
+    <>
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={() => setSnackbar({ ...snackbar, open: false })}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        severity={snackbar.severity}
+        sx={{ width: '100%' }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
     <Card>
       <CardContent>
         {/* Header Section */}
@@ -492,6 +518,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
         </Dialog>
       </CardContent>
     </Card>
+    </>
   );
 };
 
