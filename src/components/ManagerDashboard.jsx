@@ -63,7 +63,7 @@ const ManagerDashboard = ({ managerId }) => {
   };
   const handleApproval = async (timesheetId, status, approverEmails) => {
 
-    if (rejectReason == '') {
+    if (rejectReason == '' && status === 'Rejected') {
       setSelectedTimesheetId(timesheetId);
       setOpenRejectModal(true);
       return;
@@ -119,8 +119,7 @@ const ManagerDashboard = ({ managerId }) => {
 
     // Filter approvals by both email and timesheet ID and apply the date filter if it exists
     const filtered = pendingApprovals.filter((approval) => {
-      const matchesSearch = approval.timesheet.employee.email.toLowerCase().includes(lowerQuery) ||
-        approval.timesheet.timesheetId.toString().includes(lowerQuery);
+      const matchesSearch = approval.timesheet.employee.email.toLowerCase().includes(lowerQuery)
       const matchesDate = filterDate ? approval.timesheet.date === filterDate : true;
       return matchesSearch && matchesDate;
     });
@@ -154,7 +153,7 @@ const ManagerDashboard = ({ managerId }) => {
       <Grid item xs={12} md={6}>
         <TextField
           fullWidth
-          label="Search by Email or Timesheet ID"
+          label="Search by Email"
           variant="outlined"
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
@@ -216,7 +215,7 @@ const ManagerDashboard = ({ managerId }) => {
                   </Grid>
 
                   <Collapse in={expanded[approval.approvalId]} timeout="auto" unmountOnExit>
-                    <Typography variant="h6" color="textSecondary">
+                    <Typography variant="h6" color={approval.timesheet.status === 'Approved' ? 'success' : approval.timesheet.status === 'Rejected' ? 'error' : 'warning'}>
                       Status:
                       <span><b> {approval.timesheet.status}</b></span>
                     </Typography>
@@ -252,7 +251,7 @@ const ManagerDashboard = ({ managerId }) => {
                       </TableBody>
                     </Table>
 
-                    {approval.timesheet.status !== ('Approved' && 'Rejected') ? (
+                    {!['Approved', 'Rejected'].includes(approval.timesheet.status) ? (
                       <Grid container spacing={2} sx={{ mt: 2 }}>
                         <Grid item>
                           <Button
