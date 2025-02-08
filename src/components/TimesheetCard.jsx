@@ -378,7 +378,8 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
                       <TableCell>Start Date/Time</TableCell>
                       <TableCell>End Date/Time</TableCell>
                       <TableCell>Duration (hours)</TableCell>
-                      <TableCell>Actions</TableCell>
+                      {timesheet.status === 'Not Sent' && (
+                      <TableCell>Actions</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -390,7 +391,8 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
                         <TableCell>{task.startTime}</TableCell>
                         <TableCell>{task.endTime}</TableCell>
                         <TableCell>{task.duration}</TableCell>
-                        <TableCell>
+                        {timesheet.status === 'Not Sent' && (
+                          <TableCell>
                           <Button
                             size="small"
                             onClick={() => handleDialogOpen(task)}
@@ -405,7 +407,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
                           >
                             <DeleteIcon />
                           </Button>
-                        </TableCell>
+                        </TableCell>)}
                       </TableRow>
                     ))}
                   </TableBody>
