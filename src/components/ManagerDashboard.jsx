@@ -23,6 +23,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import SearchIcon from '@mui/icons-material/Search';
 import EventIcon from '@mui/icons-material/Event';
 import axios from 'axios';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 
 const ManagerDashboard = ({ managerId }) => {
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -32,7 +33,10 @@ const ManagerDashboard = ({ managerId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [selectedApprovers, setSelectedApprovers] = useState([]); // Store selected approvers
+  const [selectedTimesheetId, setSelectedTimesheetId] = useState(null);
 
 
   useEffect(() => {
@@ -58,27 +62,50 @@ const ManagerDashboard = ({ managerId }) => {
     }
   };
   const handleApproval = async (timesheetId, status, approverEmails) => {
-    try {
-        const endpoint = `http://localhost:8282/${status === "Approved" ? "approve" : "reject"}/${timesheetId}`;
 
-        const payload = {
-            approverEmails: approverEmails,  // Make sure correct data is passed
-            ...(status === "Rejected" && { reason: "Not meeting expectations" })
-        };
-
-        const response = await axios.post(endpoint, null, { params: payload });
-
-        console.log(`${status} Success:`, response.data);
-
-        setPendingApprovals(pendingApprovals.filter((approval) => approval.timesheet.timesheetId !== timesheetId));
-        setFilteredApprovals(filteredApprovals.filter((approval) => approval.timesheet.timesheetId !== timesheetId));
-
-        setSnackbar({ open: true, message: `Timesheet ${status}`, severity: 'success' });
-    } catch (error) {
-        console.error(`Error updating timesheet status to ${status}:`, error);
-        setSnackbar({ open: true, message: `Error updating timesheet status.`, severity: 'error' });
+    if (rejectReason == '') {
+      setSelectedTimesheetId(timesheetId);
+      setOpenRejectModal(true);
+      return;
     }
-};
+
+    try {
+      const endpoint = `http://localhost:8282/${status === "Approved" ? "approve" : "reject"}/${timesheetId}`;
+
+      const payload = {
+        approverEmails: approverEmails,  // Make sure correct data is passed
+        ...(status === "Rejected" && { reason: rejectReason }),
+      };
+
+      const response = await axios.post(endpoint, null, { params: payload });
+
+      console.log(`${status} Success:`, response.data);
+
+      setPendingApprovals((prevApprovals) =>
+        prevApprovals.map((approval) =>
+          approval.timesheet.timesheetId === timesheetId
+            ? { ...approval, timesheet: { ...approval.timesheet, status, reason: rejectReason } }
+            : approval
+        )
+      );
+    
+      setFilteredApprovals((prevApprovals) =>
+        prevApprovals.map((approval) =>
+          approval.timesheet.timesheetId === timesheetId
+            ? { ...approval, timesheet: { ...approval.timesheet, status, reason: rejectReason } }
+            : approval
+        )
+      );
+
+      setSnackbar({ open: true, message: `Timesheet ${status}`, severity: 'success' });
+    } catch (error) {
+      console.error(`Error updating timesheet status to ${status}:`, error);
+      setSnackbar({ open: true, message: `Error updating timesheet status.`, severity: 'error' });
+    } finally {
+      setOpenRejectModal(false);
+      setRejectReason('');
+    }
+  };
   const handleExpandClick = (approvalId) => {
     setExpanded((prevState) => ({
       ...prevState,
@@ -89,32 +116,32 @@ const ManagerDashboard = ({ managerId }) => {
   const handleSearch = (query) => {
     setSearchQuery(query);
     const lowerQuery = query.toLowerCase();
-    
+
     // Filter approvals by both email and timesheet ID and apply the date filter if it exists
     const filtered = pendingApprovals.filter((approval) => {
       const matchesSearch = approval.timesheet.employee.email.toLowerCase().includes(lowerQuery) ||
-                            approval.timesheet.timesheetId.toString().includes(lowerQuery);
+        approval.timesheet.timesheetId.toString().includes(lowerQuery);
       const matchesDate = filterDate ? approval.timesheet.date === filterDate : true;
       return matchesSearch && matchesDate;
     });
-    
+
     setFilteredApprovals(filtered);
   };
-  
+
   const handleFilterByDate = (date) => {
     setFilterDate(date);
-    
+
     // Filter approvals by both date and search query
     const filtered = pendingApprovals.filter((approval) => {
       const matchesDate = approval.timesheet.date === date;
       const matchesSearch = searchQuery ? approval.timesheet.employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                         approval.timesheet.timesheetId.toString().includes(searchQuery) : true;
+        approval.timesheet.timesheetId.toString().includes(searchQuery) : true;
       return matchesSearch && matchesDate;
     });
-    
+
     setFilteredApprovals(filtered);
   };
-  
+
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
@@ -189,9 +216,16 @@ const ManagerDashboard = ({ managerId }) => {
                   </Grid>
 
                   <Collapse in={expanded[approval.approvalId]} timeout="auto" unmountOnExit>
-                    <Typography variant="body2" color="textSecondary">
-                      Status: {approval.timesheet.status}
+                    <Typography variant="h6" color="textSecondary">
+                      Status:
+                      <span><b> {approval.timesheet.status}</b></span>
                     </Typography>
+
+                    {approval.timesheet.status === 'Rejected' && approval.timesheet.reason != "NA" ? (
+                      <Typography variant="h6" color="error">
+                        Reason: {approval.timesheet.reason}
+                      </Typography>
+                    ) : (<></>)}
 
                     <Table size="small" sx={{ mt: 2 }}>
                       <TableHead>
@@ -218,36 +252,37 @@ const ManagerDashboard = ({ managerId }) => {
                       </TableBody>
                     </Table>
 
-                    <Grid container spacing={2} sx={{ mt: 2 }}>
-                      <Grid item>
-                      <Button 
-  variant="contained" 
-  color="success" 
-  onClick={() => handleApproval(
-    approval.timesheet.timesheetId, 
-    "Approved", 
-    approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
-  )}
->
-  Approve
-</Button>
+                    {approval.timesheet.status !== ('Approved' && 'Rejected') ? (
+                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid item>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            onClick={() => handleApproval(
+                              approval.timesheet.timesheetId,
+                              "Approved",
+                              approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
+                            )}
+                          >
+                            Approve
+                          </Button>
 
-                      </Grid>
-                      <Grid item>
-                      <Button 
-  variant="contained" 
-  color="error" 
-  onClick={() => handleApproval(
-    approval.timesheet.timesheetId, 
-    "Rejected", 
-    approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
-  )}
->
-  Reject
-</Button>
+                        </Grid>
+                        <Grid item>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleApproval(
+                              approval.timesheet.timesheetId,
+                              "Rejected",
+                              approval.timesheet.approvers ? approval.timesheet.approvers.map(a => a.email) : []
+                            )}
+                          >
+                            Reject
+                          </Button>
 
-                      </Grid>
-                    </Grid>
+                        </Grid>
+                      </Grid>) : (<></>)}
                   </Collapse>
                 </CardContent>
               </Card>
@@ -255,6 +290,44 @@ const ManagerDashboard = ({ managerId }) => {
           ))
         )
       )}
+
+      <Dialog open={openRejectModal} onClose={() => setOpenRejectModal(false)}>
+        <DialogTitle>Reject Timesheet</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Reason for rejection"
+            variant="outlined"
+            multiline
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenRejectModal(false)} color="secondary">Cancel</Button>
+          <Button
+            onClick={() => {
+              if (rejectReason.trim()) {
+                const selectedApproval = pendingApprovals.find(
+                  (approval) => approval.timesheet.timesheetId === selectedTimesheetId
+                );
+
+                const approverEmails = selectedApproval?.timesheet?.approvers
+                  ? selectedApproval.timesheet.approvers.map((a) => a.email)
+                  : [];
+
+                handleApproval(selectedTimesheetId, "Rejected", approverEmails);
+              }
+            }}
+            color="error"
+            disabled={!rejectReason.trim()}
+          >
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>

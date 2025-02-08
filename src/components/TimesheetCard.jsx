@@ -203,7 +203,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   const submitTimesheet = async () => {
     try {
       const employeeId = '1';
-  
+
       // Check if tasks array is empty
       if (tasks.length === 0) {
         setSnackbar({
@@ -213,25 +213,25 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
         });
         return;
       }
-  
+
       console.log('Approvers:', selectedApprovers, 'Tasks:', tasks);
-  
+
       const formData = new URLSearchParams();
       formData.append("employeeId", employeeId);
       formData.append("timesheetId", timesheet.timesheetId);
-  
+
       // Append selected approvers
       selectedApprovers.forEach(email => formData.append("approverEmails", email));
-  
+
       // For debugging - log the form data
       console.log('Submitting with params:', Object.fromEntries(formData));
-  
+
       const response = await axios.post('http://localhost:8282/submit', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-  
+
       if (response.status === 200) {
         console.log('Process ID:', response.data);
         setSnackbar({
@@ -239,7 +239,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
           message: 'Timesheet submitted for approval successfully!',
           severity: 'success'
         });
-  
+
         // Close modal & reset selected approvers
         setApproversModalOpen(false);
         setApprovers([{ email: '' }]);
@@ -261,7 +261,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
       console.error('Error submitting timesheet:', error);
     }
   };
-  
+
   // Status color function
   const getStatusColor = (status) => {
     switch (status) {
@@ -278,246 +278,251 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
 
   return (
     <>
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={3000}
-      onClose={() => setSnackbar({ ...snackbar, open: false })}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    >
-      <Alert
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        severity={snackbar.severity}
-        sx={{ width: '100%' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-    <Card>
-      <CardContent>
-        {/* Header Section */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ mr: 3 }}>{timesheet.date}</Typography>
-            <Chip
-              label={timesheet.status}
-              color={getStatusColor(timesheet.status)}
-              size="small"
-              sx={{ mr: 3 }}
-            />
-            <Typography variant="subtitle1" sx={{ mr: 3 }}>
-              Total Tasks: {tasks.length}
-            </Typography>
-            <Typography variant="subtitle1" sx={{ mr: 3 }}>
-              Total Duration: {getTotalDuration()} Hr
-            </Typography>
-          </Box>
-
-          <Box>
-            {timesheet.status === 'Not Sent' && (
-              <Button 
-              size="small" 
-              color="primary" 
-              onClick={() => {setApproversModalOpen(true)}} 
-              sx={{ mr: 2 }}
-            >
-              <SendIcon />
-            </Button>
-            )}
-            {timesheet.status === 'Not Sent' && (
-              <Button 
-              size="small" 
-              onClick={() => handleDialogOpen()}
-              sx={{ mr: 2 }}
-            >
-              <AddIcon />
-            </Button>
-            )}
-            {timesheet.status === 'Not Sent' && (
-              <Button 
-              size="small" 
-              color="error" 
-              onClick={handleDeleteTimesheet}
-              sx={{ mr: 2 }}
-            >
-              <DeleteIcon />
-            </Button>
-            )}
-            <Button 
-              size="small" 
-              color="success" 
-              onClick={exportToExcel}
-              sx={{ mr: 2 }}
-            >
-              <FileDownloadIcon />
-            </Button>
-            <Button
-              size="small"
-              onClick={() => setIsOpen(!isOpen)}
-              color="primary"
-            >
-              {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Tasks Table */}
-        <Collapse in={isOpen}>
-          <Box sx={{ mt: 2 }}>
-            {tasks.length > 0 && (
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Task ID</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Task Description</TableCell>
-                    <TableCell>Start Date/Time</TableCell>
-                    <TableCell>End Date/Time</TableCell>
-                    <TableCell>Duration (hours)</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tasks.map((task) => (
-                    <TableRow key={task.taskId}>
-                      <TableCell>{task.taskId}</TableCell>
-                      <TableCell>{task.taskName}</TableCell>
-                      <TableCell>{task.taskDescription}</TableCell>
-                      <TableCell>{task.startTime}</TableCell>
-                      <TableCell>{task.endTime}</TableCell>
-                      <TableCell>{task.duration}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="small"
-                          onClick={() => handleDialogOpen(task)}
-                          sx={{ mr: 1 }}
-                        >
-                          <EditIcon />
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => handleDeleteTask(task.taskId)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </Box>
-        </Collapse>
-
-        {/* Add/Edit Task Dialog */}
-        <Dialog open={openDialog} onClose={handleDialogClose}>
-          <DialogTitle>
-            {editingTaskId ? 'Edit Task' : 'Add New Task'}
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Task Name"
-              value={newTask.taskName}
-              onChange={(e) => setNewTask({ ...newTask, taskName: e.target.value })}
-              fullWidth
-              sx={{ mb: 2, mt: 2 }}
-              required
-            />
-            <TextField
-              label="Task Description"
-              value={newTask.taskDescription}
-              onChange={(e) => setNewTask({ ...newTask, taskDescription: e.target.value })}
-              fullWidth
-              sx={{ mb: 2, mt: 2 }}
-              required
-            />
-            <TextField
-              label="Start Date/Time"
-              type="time"
-              value={newTask.startTime ? newTask.startTime.split('T')[1] : ''}
-              onChange={(e) => {
-                const newStartTime = e.target.value;
-                setNewTask({
-                  ...newTask,
-                  startTime: `${timesheet.date}T${newStartTime}`,
-                });
-              }}
-              fullWidth
-              sx={{ mb: 2 }}
-              required
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ step: 300 }}
-            />
-            <TextField
-              label="End Date/Time"
-              type="time"
-              value={newTask.endTime ? newTask.endTime.split('T')[1] : ''}
-              onChange={(e) => {
-                const newEndTime = e.target.value;
-                const newEndDateTime = `${timesheet.date}T${newEndTime}`;
-                setNewTask({
-                  ...newTask,
-                  endTime: newEndDateTime,
-                  duration: newTask.startTime ?
-                    calculateDuration(newTask.startTime, newEndDateTime) :
-                    ''
-                });
-              }}
-              fullWidth
-              sx={{ mb: 2 }}
-              required
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ step: 300 }}
-            />
-            <TextField
-              label="Duration (hours)"
-              type="number"
-              value={newTask.duration}
-              onChange={(e) => setNewTask({ ...newTask, duration: e.target.value })}
-              fullWidth
-              required
-              disabled
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDialogClose}>Cancel</Button>
-            <Button
-              onClick={addTask}
-              disabled={!newTask.taskName || !newTask.startTime || !newTask.endTime}
-            >
-              {editingTaskId ? 'Update' : 'Add'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog
-          open={approversModalOpen}
-          onClose={() => setApproversModalOpen(false)}
-          PaperProps={{
-            sx: { width: 500, maxHeight: 600 },
-          }}
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
-          <DialogTitle>Add Approvers</DialogTitle>
-          <DialogContent>
-            {/* Searchable Dropdown */}
-            <Autocomplete
-            sx={{mt:2}}
-              multiple
-              options={approvers.map((app) => app.email)}
-              value={selectedApprovers}
-              onChange={(event, newValue) => setSelectedApprovers(newValue)}
-              renderInput={(params) => <TextField {...params} label="Search & Select Approvers" placeholder="Type to search" />}
-            />
-          </DialogContent>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+      <Card>
+        <CardContent>
+          {/* Header Section */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="h6" sx={{ mr: 3 }}>{timesheet.date}</Typography>
+              <Chip
+                label={timesheet.status}
+                color={getStatusColor(timesheet.status)}
+                size="small"
+                sx={{ mr: 3 }}
+              />
+              <Typography variant="subtitle1" sx={{ mr: 3 }}>
+                Total Tasks: {tasks.length}
+              </Typography>
+              <Typography variant="subtitle1" sx={{ mr: 3 }}>
+                Total Duration: {getTotalDuration()} Hr
+              </Typography>
+            </Box>
 
-          <DialogActions>
-            <Button onClick={() => setApproversModalOpen(false)}>Cancel</Button>
-            <Button onClick={submitTimesheet} disabled={selectedApprovers.length === 0}>
-              Submit for Approval
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </CardContent>
-    </Card>
+            <Box>
+              {timesheet.status === 'Not Sent' && (
+                <Button
+                  size="small"
+                  color="primary"
+                  onClick={() => { setApproversModalOpen(true) }}
+                  sx={{ mr: 2 }}
+                >
+                  <SendIcon />
+                </Button>
+              )}
+              {timesheet.status === 'Not Sent' && (
+                <Button
+                  size="small"
+                  onClick={() => handleDialogOpen()}
+                  sx={{ mr: 2 }}
+                >
+                  <AddIcon />
+                </Button>
+              )}
+              {timesheet.status === 'Not Sent' && (
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={handleDeleteTimesheet}
+                  sx={{ mr: 2 }}
+                >
+                  <DeleteIcon />
+                </Button>
+              )}
+              <Button
+                size="small"
+                color="success"
+                onClick={exportToExcel}
+                sx={{ mr: 2 }}
+              >
+                <FileDownloadIcon />
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setIsOpen(!isOpen)}
+                color="primary"
+              >
+                {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </Button>
+            </Box>
+          </Box>
+
+          {timesheet.status === 'Rejected' && timesheet.reason != "NA" && (
+            <Typography>
+              <strong>Reason: {timesheet.reason}</strong> 
+            </Typography>)}
+
+          {/* Tasks Table */}
+          <Collapse in={isOpen}>
+            <Box sx={{ mt: 2 }}>
+              {tasks.length > 0 && (
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Task ID</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Task Description</TableCell>
+                      <TableCell>Start Date/Time</TableCell>
+                      <TableCell>End Date/Time</TableCell>
+                      <TableCell>Duration (hours)</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tasks.map((task) => (
+                      <TableRow key={task.taskId}>
+                        <TableCell>{task.taskId}</TableCell>
+                        <TableCell>{task.taskName}</TableCell>
+                        <TableCell>{task.taskDescription}</TableCell>
+                        <TableCell>{task.startTime}</TableCell>
+                        <TableCell>{task.endTime}</TableCell>
+                        <TableCell>{task.duration}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            onClick={() => handleDialogOpen(task)}
+                            sx={{ mr: 1 }}
+                          >
+                            <EditIcon />
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => handleDeleteTask(task.taskId)}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
+          </Collapse>
+
+          {/* Add/Edit Task Dialog */}
+          <Dialog open={openDialog} onClose={handleDialogClose}>
+            <DialogTitle>
+              {editingTaskId ? 'Edit Task' : 'Add New Task'}
+            </DialogTitle>
+            <DialogContent>
+              <TextField
+                label="Task Name"
+                value={newTask.taskName}
+                onChange={(e) => setNewTask({ ...newTask, taskName: e.target.value })}
+                fullWidth
+                sx={{ mb: 2, mt: 2 }}
+                required
+              />
+              <TextField
+                label="Task Description"
+                value={newTask.taskDescription}
+                onChange={(e) => setNewTask({ ...newTask, taskDescription: e.target.value })}
+                fullWidth
+                sx={{ mb: 2, mt: 2 }}
+                required
+              />
+              <TextField
+                label="Start Date/Time"
+                type="time"
+                value={newTask.startTime ? newTask.startTime.split('T')[1] : ''}
+                onChange={(e) => {
+                  const newStartTime = e.target.value;
+                  setNewTask({
+                    ...newTask,
+                    startTime: `${timesheet.date}T${newStartTime}`,
+                  });
+                }}
+                fullWidth
+                sx={{ mb: 2 }}
+                required
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 300 }}
+              />
+              <TextField
+                label="End Date/Time"
+                type="time"
+                value={newTask.endTime ? newTask.endTime.split('T')[1] : ''}
+                onChange={(e) => {
+                  const newEndTime = e.target.value;
+                  const newEndDateTime = `${timesheet.date}T${newEndTime}`;
+                  setNewTask({
+                    ...newTask,
+                    endTime: newEndDateTime,
+                    duration: newTask.startTime ?
+                      calculateDuration(newTask.startTime, newEndDateTime) :
+                      ''
+                  });
+                }}
+                fullWidth
+                sx={{ mb: 2 }}
+                required
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ step: 300 }}
+              />
+              <TextField
+                label="Duration (hours)"
+                type="number"
+                value={newTask.duration}
+                onChange={(e) => setNewTask({ ...newTask, duration: e.target.value })}
+                fullWidth
+                required
+                disabled
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleDialogClose}>Cancel</Button>
+              <Button
+                onClick={addTask}
+                disabled={!newTask.taskName || !newTask.startTime || !newTask.endTime}
+              >
+                {editingTaskId ? 'Update' : 'Add'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={approversModalOpen}
+            onClose={() => setApproversModalOpen(false)}
+            PaperProps={{
+              sx: { width: 500, maxHeight: 600 },
+            }}
+          >
+            <DialogTitle>Add Approvers</DialogTitle>
+            <DialogContent>
+              {/* Searchable Dropdown */}
+              <Autocomplete
+                sx={{ mt: 2 }}
+                multiple
+                options={approvers.map((app) => app.email)}
+                value={selectedApprovers}
+                onChange={(event, newValue) => setSelectedApprovers(newValue)}
+                renderInput={(params) => <TextField {...params} label="Search & Select Approvers" placeholder="Type to search" />}
+              />
+            </DialogContent>
+
+            <DialogActions>
+              <Button onClick={() => setApproversModalOpen(false)}>Cancel</Button>
+              <Button onClick={submitTimesheet} disabled={selectedApprovers.length === 0}>
+                Submit for Approval
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </CardContent>
+      </Card>
     </>
   );
 };
