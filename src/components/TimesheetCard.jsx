@@ -20,7 +20,11 @@ import {
   IconButton,
   Autocomplete,
   Snackbar,
-  Alert
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  Divider
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -29,11 +33,12 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PersonIcon from '@mui/icons-material/Person';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 
 const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
- 
+
   const [tasks, setTasks] = useState(timesheet.tasks || []);
   const [newTask, setNewTask] = useState({
     taskName: '',
@@ -54,6 +59,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   });
   const [approvers, setApprovers] = useState([]); // List of available approvers
   const [selectedApprovers, setSelectedApprovers] = useState([]); // Selected approvers
+  const [submittedApprovers, setSubmittedApprovers] = useState([]); // Submitted approvers
 
   useEffect(() => {
     const fetchApprovers = async () => {
@@ -65,7 +71,17 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
       }
     };
 
+    const fetchSubmittedApprovers = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8282/approvals/timesheet/${timesheet.timesheetId}/approvers`);
+        setSubmittedApprovers(response.data);
+      } catch (error) {
+        console.error("Error fetching submitted approvers:", error);
+      }
+    };
+
     fetchApprovers();
+    fetchSubmittedApprovers();
   }, []);
 
   const getTotalDuration = () => {
@@ -82,15 +98,6 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
-
-  // const areApproversValid = () => {
-  //   return approvers.every(approver =>
-  //     approver.email.trim() === '' || isValidEmail(approver.email)
-  //   ) && approvers.some(approver =>
-  //     approver.email.trim() !== '' && isValidEmail(approver.email)
-  //   );
-  // };
-
 
   const addTask = async () => {
     if (newTask.startTime && newTask.endTime) {
@@ -360,9 +367,29 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
             </Box>
           </Box>
 
+          {(timesheet.status === 'Pending' || timesheet.status === 'Approved' || timesheet.status === 'Rejected') && submittedApprovers.length > 0 && (
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <PersonIcon sx={{ mr: 1 }} /> Approvers
+              </Typography>
+              <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                {submittedApprovers.map((approver, index) => (
+                  <React.Fragment key={index}>
+                    <ListItem>
+                      <ListItemText
+                        primary={approver.email}
+                      />
+                    </ListItem>
+                    {index < submittedApprovers.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            </Box>
+          )}
+
           {timesheet.status === 'Rejected' && timesheet.reason != "NA" && (
             <Typography>
-              <strong>Reason: {timesheet.reason}</strong> 
+              <strong>Reason: {timesheet.reason}</strong>
             </Typography>)}
 
           {/* Tasks Table */}
@@ -379,7 +406,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
                       <TableCell>End Date/Time</TableCell>
                       <TableCell>Duration (hours)</TableCell>
                       {timesheet.status === 'Not Sent' && (
-                      <TableCell>Actions</TableCell>)}
+                        <TableCell>Actions</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -393,21 +420,21 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
                         <TableCell>{task.duration}</TableCell>
                         {timesheet.status === 'Not Sent' && (
                           <TableCell>
-                          <Button
-                            size="small"
-                            onClick={() => handleDialogOpen(task)}
-                            sx={{ mr: 1 }}
-                          >
-                            <EditIcon />
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => handleDeleteTask(task.taskId)}
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </Button>
-                        </TableCell>)}
+                            <Button
+                              size="small"
+                              onClick={() => handleDialogOpen(task)}
+                              sx={{ mr: 1 }}
+                            >
+                              <EditIcon />
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={() => handleDeleteTask(task.taskId)}
+                              color="error"
+                            >
+                              <DeleteIcon />
+                            </Button>
+                          </TableCell>)}
                       </TableRow>
                     ))}
                   </TableBody>
