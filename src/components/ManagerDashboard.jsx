@@ -51,7 +51,6 @@ const ManagerDashboard = ({ managerId }) => {
     fetchPendingApprovals();
   }, []);
 
-  // Apply initial filtering when data is loaded or tab changes
   useEffect(() => {
     filterApprovals(searchQuery, filterDate);
   }, [pendingApprovals, activeTab]);
@@ -76,7 +75,7 @@ const ManagerDashboard = ({ managerId }) => {
   };
 
   const handleApproval = async (timesheetId, status, approverEmails) => {
-    if (rejectReason == '' && status === 'Rejected') {
+    if (rejectReason === '' && status === 'Rejected') {
       setSelectedTimesheetId(timesheetId);
       setOpenRejectModal(true);
       return;
@@ -130,16 +129,11 @@ const ManagerDashboard = ({ managerId }) => {
 
   const getStatusForTab = (tabIndex) => {
     switch (tabIndex) {
-      case 0:
-        return 'All';
-      case 1:
-        return 'Pending';
-      case 2:
-        return 'Approved';
-      case 3:
-        return 'Rejected';
-      default:
-        return 'All';
+      case 0: return 'All';
+      case 1: return 'Pending';
+      case 2: return 'Approved';
+      case 3: return 'Rejected';
+      default: return 'All';
     }
   };
 
@@ -148,9 +142,14 @@ const ManagerDashboard = ({ managerId }) => {
     const currentStatus = getStatusForTab(activeTab);
     
     const filtered = approvals.filter((approval) => {
-      const matchesSearch = approval.timesheet.employee.email.toLowerCase().includes(lowerQuery);
-      const matchesDate = date ? approval.timesheet.date === date : true;
-      const matchesStatus = currentStatus === 'All' ? true : approval.timesheet.status === currentStatus;
+      // Safely access nested properties
+      const email = approval?.timesheet?.employee?.email || '';
+      const status = approval?.timesheet?.status || '';
+      const timesheetDate = approval?.timesheet?.date || '';
+      
+      const matchesSearch = email.toLowerCase().includes(lowerQuery);
+      const matchesDate = date ? timesheetDate === date : true;
+      const matchesStatus = currentStatus === 'All' ? true : status === currentStatus;
       
       return matchesSearch && matchesDate && matchesStatus;
     });
@@ -160,6 +159,14 @@ const ManagerDashboard = ({ managerId }) => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const getEmployeeEmail = (approval) => {
+    return approval?.timesheet?.employee?.email || 'No email available';
+  };
+
+  const getTimesheetDate = (approval) => {
+    return approval?.timesheet?.date || 'No date available';
   };
 
   return (
@@ -243,9 +250,9 @@ const ManagerDashboard = ({ managerId }) => {
                           sx={{ cursor: 'pointer', fontWeight: 'bold' }}
                           onClick={() => handleExpandClick(approval.approvalId)}
                         >
-                          Timesheet Date: {approval.timesheet.date}
+                          Timesheet Date: {getTimesheetDate(approval)}
                           <span style={{ margin: '0 10px' }}>|</span>
-                          Email: {approval.timesheet.employee.email}
+                          Email: {getEmployeeEmail(approval)}
                         </Typography>
                         <IconButton onClick={() => handleExpandClick(approval.approvalId)}>
                           {expanded[approval.approvalId] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -253,11 +260,11 @@ const ManagerDashboard = ({ managerId }) => {
                       </Grid>
 
                       <Collapse in={expanded[approval.approvalId]} timeout="auto" unmountOnExit>
-                        <Typography variant="h6" color={approval.timesheet.status === 'Approved' ? 'success' : approval.timesheet.status === 'Rejected' ? 'error' : 'warning'}>
-                          Status: <span><b>{approval.timesheet.status}</b></span>
+                        <Typography variant="h6" color={approval?.timesheet?.status === 'Approved' ? 'success' : approval?.timesheet?.status === 'Rejected' ? 'error' : 'warning'}>
+                          Status: <span><b>{approval?.timesheet?.status || 'Unknown'}</b></span>
                         </Typography>
 
-                        {approval.timesheet.status === 'Rejected' && approval.timesheet.reason !== "NA" && (
+                        {approval?.timesheet?.status === 'Rejected' && approval?.timesheet?.reason !== "NA" && (
                           <Typography variant="h6" color="error">
                             Reason: {approval.timesheet.reason}
                           </Typography>
@@ -272,7 +279,7 @@ const ManagerDashboard = ({ managerId }) => {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {approval.timesheet.tasks.length > 0 ? (
+                            {approval?.timesheet?.tasks?.length > 0 ? (
                               approval.timesheet.tasks.map((task, index) => (
                                 <TableRow key={index}>
                                   <TableCell>{task.taskName}</TableCell>
@@ -288,7 +295,7 @@ const ManagerDashboard = ({ managerId }) => {
                           </TableBody>
                         </Table>
 
-                        {approval.timesheet.status === 'Pending' && (
+                        {approval?.timesheet?.status === 'Pending' && (
                           <Grid container spacing={2} sx={{ mt: 2 }}>
                             <Grid item>
                               <Button
@@ -348,7 +355,7 @@ const ManagerDashboard = ({ managerId }) => {
             onClick={() => {
               if (rejectReason.trim()) {
                 const selectedApproval = pendingApprovals.find(
-                  (approval) => approval.timesheet.timesheetId === selectedTimesheetId
+                  (approval) => approval?.timesheet?.timesheetId === selectedTimesheetId
                 );
 
                 const approverEmails = selectedApproval?.timesheet?.approvers
