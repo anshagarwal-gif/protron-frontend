@@ -34,6 +34,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PersonIcon from '@mui/icons-material/Person';
+import Grid from '@mui/material/Grid';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 
@@ -59,7 +60,7 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
   });
   const [approvers, setApprovers] = useState([]); // List of available approvers
   const [selectedApprovers, setSelectedApprovers] = useState([]); // Selected approvers
-  const [submittedApprovers, setSubmittedApprovers] = useState([]); // Submitted approvers
+  const [approvals, setApprovals] = useState([]); // Submitted approvers
 
   useEffect(() => {
     const fetchApprovers = async () => {
@@ -71,17 +72,17 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
       }
     };
 
-    const fetchSubmittedApprovers = async () => {
+    const fetchApprovals = async () => {
       try {
-        const response = await axios.get(`http://localhost:8282/approvals/timesheet/${timesheet.timesheetId}/approvers`);
-        setSubmittedApprovers(response.data);
+        const response = await axios.get(`http://localhost:8282/approvals/getApprovalByTimesheetId?timesheetId=${timesheet.timesheetId}`);
+        setApprovals(response.data);
       } catch (error) {
-        console.error("Error fetching submitted approvers:", error);
+        console.error("Error fetching approvals:", error);
       }
     };
 
     fetchApprovers();
-    fetchSubmittedApprovers();
+    fetchApprovals();
   }, []);
 
   const getTotalDuration = () => {
@@ -367,30 +368,41 @@ const TimesheetCard = ({ timesheet, onDelete, setTimesheets }) => {
             </Box>
           </Box>
 
-          {(timesheet.status === 'Pending' || timesheet.status === 'Approved' || timesheet.status === 'Rejected') && submittedApprovers.length > 0 && (
+          {(timesheet.status === 'Pending' || timesheet.status === 'Approved' || timesheet.status === 'Rejected') && approvals.length > 0 && (
             <Box sx={{ mt: 2, mb: 2 }}>
               <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <PersonIcon sx={{ mr: 1 }} /> Approvers
               </Typography>
               <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid #e0e0e0' }}>
-                {submittedApprovers.map((approver, index) => (
+                {approvals.map((approval, index) => (
                   <React.Fragment key={index}>
                     <ListItem>
-                      <ListItemText
-                        primary={approver.email}
-                      />
+                      <Grid container spacing={2} alignItems="center">
+                        {/* Approver Name */}
+                        <Grid item xs={4}>
+                          <Typography variant="body1"><strong>{approval.approverEmail}</strong></Typography>
+                        </Grid>
+
+                        {/* Status */}
+                        <Grid item xs={3}>
+                          <Typography variant="body1" style={{ color: approval.status === "Approved" ? "green" : approval.status === "Rejected" ? "red" : "orange" }}>
+                            <strong>{approval.status}</strong>
+                          </Typography>
+                        </Grid>
+
+                        {/* Reason (if exists) */}
+                        {approval.reason != null && (
+                          <Grid item xs={5}>
+                            <Typography variant="body2">{approval.reason}</Typography>
+                          </Grid>
+                        )}
+                      </Grid>
                     </ListItem>
-                    {index < submittedApprovers.length - 1 && <Divider />}
                   </React.Fragment>
                 ))}
               </List>
             </Box>
           )}
-
-          {timesheet.status === 'Rejected' && timesheet.reason != "NA" && (
-            <Typography>
-              <strong>Reason: {timesheet.reason}</strong>
-            </Typography>)}
 
           {/* Tasks Table */}
           <Collapse in={isOpen}>
