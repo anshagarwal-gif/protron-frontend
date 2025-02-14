@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Tabs,
@@ -22,7 +22,6 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
-// Custom styled components
 const LoginCard = styled(Card)(({ theme }) => ({
   maxWidth: 450,
   margin: 'auto',
@@ -30,98 +29,103 @@ const LoginCard = styled(Card)(({ theme }) => ({
   boxShadow: theme.shadows[3],
 }));
 
-const TabPanel = ({ children, value, index }) => (
-  <div role="tabpanel" hidden={value !== index}>
-    {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-  </div>
-);
+// Memoized input field component
+const PasswordField = memo(({ value, onChange, showPassword, onTogglePassword }) => (
+  <TextField
+    fullWidth
+    label="Password"
+    name="password"
+    type={showPassword ? 'text' : 'password'}
+    variant="outlined"
+    value={value}
+    onChange={onChange}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <IconButton
+            aria-label="toggle password visibility"
+            onClick={onTogglePassword}
+            onMouseDown={(e) => e.preventDefault()}
+            edge="start"
+            size="small"
+          >
+            {showPassword ? <VisibilityOff /> : <Visibility />}
+          </IconButton>
+        </InputAdornment>
+      ),
+    }}
+  />
+));
 
-const LoginPage = () => {
-  const [value, setValue] = useState(0);
+const EmailField = memo(({ value, onChange }) => (
+  <TextField
+    fullWidth
+    label="Email"
+    name="email"
+    type="email"
+    variant="outlined"
+    value={value}
+    onChange={onChange}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <Email />
+        </InputAdornment>
+      ),
+    }}
+  />
+));
+
+// Memoized form header
+const FormHeader = memo(({ role, color }) => (
+  <Box sx={{ textAlign: 'center', mb: 2 }}>
+    {role === 'Team Member' && <Person sx={{ fontSize: 48, color }} />}
+    {role === 'Manager' && <Groups sx={{ fontSize: 48, color }} />}
+    {role === 'Admin' && <AdminPanelSettings sx={{ fontSize: 48, color }} />}
+    <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
+      {role} Login
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      Welcome back! Please login to continue
+    </Typography>
+  </Box>
+));
+
+// Memoized login form component
+const LoginForm = memo(({ role, color, onSubmit }) => {
+  const [formState, setFormState] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const navigate = useNavigate();
 
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleSubmit = (role) => (e) => {
+  const togglePasswordVisibility = useCallback((e) => {
     e.preventDefault();
-    console.log(`Logging in as ${role}:`, formData);
+    setShowPassword(prev => !prev);
+  }, []);
 
-    // Redirect based on role
-    if (role === 'Team Member') navigate('/home');
-    else if (role === 'Manager') navigate('/manager');
-    else if (role === 'Admin') navigate('/admin');
-  };
+  const handleSubmit = useCallback((e) => {
+    e.preventDefault();
+    onSubmit(formState);
+  }, [formState, onSubmit]);
 
-  const LoginForm = ({ role, color }) => (
-    <form onSubmit={handleSubmit(role)}>
+  return (
+    <form onSubmit={handleSubmit}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Box sx={{ textAlign: 'center', mb: 2 }}>
-          {role === 'Team Member' && <Person sx={{ fontSize: 48, color }} />}
-          {role === 'Manager' && <Groups sx={{ fontSize: 48, color }} />}
-          {role === 'Admin' && <AdminPanelSettings sx={{ fontSize: 48, color }} />}
-          <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
-            {role} Login
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Welcome back! Please login to continue
-          </Typography>
-        </Box>
-
-        <TextField
-          fullWidth
-          label="Email"
-          name="email"
-          variant="outlined"
-          value={formData.email}
+        <FormHeader role={role} color={color} />
+        
+        <EmailField
+          value={formState.email}
           onChange={handleInputChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Email />
-              </InputAdornment>
-            ),
-          }}
         />
 
-        <TextField
-          fullWidth
-          label="Password"
-          name="password"
-          type={showPassword ? 'text' : 'password'}
-          variant="outlined"
-          value={formData.password}
+        <PasswordField
+          value={formState.password}
           onChange={handleInputChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <IconButton
-                  aria-label="toggle password visibility"
-                  onClick={handleClickShowPassword}
-                  edge="start"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
+          showPassword={showPassword}
+          onTogglePassword={togglePasswordVisibility}
         />
 
         <Button
@@ -142,11 +146,50 @@ const LoginPage = () => {
       </Box>
     </form>
   );
+});
+
+// Memoized tab panel
+const TabPanel = memo(({ children, value, index }) => (
+  <div
+    role="tabpanel"
+    hidden={value !== index}
+    id={`login-tabpanel-${index}`}
+    aria-labelledby={`login-tab-${index}`}
+  >
+    {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+  </div>
+));
+
+const LoginPage = () => {
+  const [activeTab, setActiveTab] = useState(0);
+  const navigate = useNavigate();
+
+  const handleTabChange = useCallback((event, newValue) => {
+    setActiveTab(newValue);
+  }, []);
+
+  const handleSubmit = useCallback((role) => (formData) => {
+    console.log(`Logging in as ${role}:`, formData);
+    
+    switch(role) {
+      case 'Team Member':
+        navigate('/home');
+        break;
+      case 'Manager':
+        navigate('/manager');
+        break;
+      case 'Admin':
+        navigate('/admin');
+        break;
+      default:
+        break;
+    }
+  }, [navigate]);
 
   return (
     <Box
       sx={{
-        maxHeight: '100vh',
+        minHeight: '100vh',
         backgroundColor: '#f5f5f5',
         display: 'flex',
         alignItems: 'center',
@@ -157,24 +200,54 @@ const LoginPage = () => {
       <LoginCard>
         <CardContent>
           <Tabs
-            value={value}
-            onChange={handleChange}
+            value={activeTab}
+            onChange={handleTabChange}
             variant="fullWidth"
             sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
           >
-            <Tab icon={<Person />} label="Team Member" iconPosition="start" />
-            <Tab icon={<Groups />} label="Manager" iconPosition="start" />
-            <Tab icon={<AdminPanelSettings />} label="Admin" iconPosition="start" />
+            <Tab
+              icon={<Person />}
+              label="Team Member"
+              iconPosition="start"
+              id="login-tab-0"
+              aria-controls="login-tabpanel-0"
+            />
+            <Tab
+              icon={<Groups />}
+              label="Manager"
+              iconPosition="start"
+              id="login-tab-1"
+              aria-controls="login-tabpanel-1"
+            />
+            <Tab
+              icon={<AdminPanelSettings />}
+              label="Admin"
+              iconPosition="start"
+              id="login-tab-2"
+              aria-controls="login-tabpanel-2"
+            />
           </Tabs>
 
-          <TabPanel value={value} index={0}>
-            <LoginForm role="Team Member" color="#1976d2" />
+          <TabPanel value={activeTab} index={0}>
+            <LoginForm 
+              role="Team Member" 
+              color="#1976d2" 
+              onSubmit={handleSubmit('Team Member')}
+            />
           </TabPanel>
-          <TabPanel value={value} index={1}>
-            <LoginForm role="Manager" color="#2e7d32" />
+          <TabPanel value={activeTab} index={1}>
+            <LoginForm 
+              role="Manager" 
+              color="#2e7d32" 
+              onSubmit={handleSubmit('Manager')}
+            />
           </TabPanel>
-          <TabPanel value={value} index={2}>
-            <LoginForm role="Admin" color="#9c27b0" />
+          <TabPanel value={activeTab} index={2}>
+            <LoginForm 
+              role="Admin" 
+              color="#9c27b0" 
+              onSubmit={handleSubmit('Admin')}
+            />
           </TabPanel>
         </CardContent>
       </LoginCard>
